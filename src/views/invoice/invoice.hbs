@@ -1,0 +1,207 @@
+<style>
+    table.table-bordered {
+        border: 1px solid #817b7b;
+        margin-top: 20px;
+    }
+
+    table.table-bordered>thead>tr>th {
+        border: 1px solid #817b7b;
+    }
+
+    table.table-bordered>tbody>tr>td {
+        border: 1px solid #817b7b;
+    }
+</style>
+
+
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        Facturas
+    </h1>
+</div>
+
+<div class="row" id="form">
+
+    <div class="col-md-7">
+        <div class="card shadow border-bottom-default h-100 py-0">
+            <div class="card-body">
+                <form action="/save-invoice" id="frmInvoice" enctype="multipart/form-data" method="POST">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-10">
+                                <div class="form-group">
+                                    <input type="hidden" name="id" value="{{id}}">
+                                    <input type="text" name="client" value="{{client}}"
+                                        class="form-control form-control-user" aria-describedby="Cliente"
+                                        placeholder="Cliente" required>
+                                </div>
+                            </div>
+                            <dov class="col-sm-12">
+                                <div class="form-group" id="invoiceRows"></div>
+                            </dov>
+                        </div>
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-secondary">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-5" id="inv-list">
+        <div class="row">
+            {{#each invoices}}
+            <div class="col-md-3 mb-4">
+                <div class="card shadow border-bottom-default h-100 py-0 pdf-card">
+                    <div class="card-body">
+                        <img src="/img/invoice.svg" width="80%" class="mb-2 pdf-img" data-identifier="{{id}}"
+                            style="cursor: pointer;">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-1">
+                                <div class="text-xs text-center font-weight-bold text-primary text-uppercase mb-1">
+                                    {{ client }}
+                                </div>
+                                <div class="text-xs mb-0 text-center font-weight-bold">
+                                    <a href="/invoices/{{id}}" class="text-secondary"> Editar </a>
+                                    <br>
+                                    <a href="/invoices/delete/{{id}}"
+                                        onclick="return confirm('Estás a punto de eliminar la factura ¿Deseas continuar?')"
+                                        class="
+                                text-danger"> Eliminar </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{/each}}
+        </div>
+    </div>
+</div>
+
+<div class="row" id="invoice" style="display: none;">
+    <div class="col-sm-5">
+        <div class="card">
+            <div class="card-body" id="invoice-content">
+            </div>
+            <div class="card-footer">
+                <button type="button" class="btn btn-link" onclick="back()">Volver</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{#section 'script'}}
+<script type="application/javascript">
+    $(function () {
+        $(".pdf-card")
+            .mouseenter(function () {
+                $(this).addClass('border-bottom-primary');
+            })
+            .mouseleave(function () {
+                $(this).removeClass('border-bottom-primary');
+            });
+        $('.pdf-img').click(function () {
+            const identifier = $(this).data('identifier');
+            generate(identifier);
+        });
+        const id = "{{id}}";
+        init(id);
+    });
+
+
+    function generate(identifier) {
+        $.get("/api/invoices/" + identifier + "/generate", function (html) {
+            $("#form").slideUp();
+            $("#invoice").slideDown();
+            $("#invoice-content").html(html);
+        });
+        //html2canvas(document.querySelector("#inv-list")).then(canvas => {document.body.appendChild(canvas); });
+    }
+
+    function back() {
+        $("#form").slideDown();
+        $("#invoice").slideUp();
+    }
+
+    function init(id) {
+        if (id) {
+            $.get("/api/invoices/" + id, function (data) {
+                if (data && Array.isArray(data.rows) && data.rows.length > 0) {
+                    for (const [i, row] of data.rows.entries()) {
+                        addRow(row, i === data.rows.length - 1);
+                    }
+                } else {
+                    addEmptyRow();
+                }
+            });
+        } else {
+            addEmptyRow();
+        }
+    }
+
+    function addRow(row, printAddButton = false) {
+        row = handleRowData(row);
+        const addBtn = `<button class ="btn btn-primary btn-circle btn-sm add-row-btn" title="Agregar" type ="button" onclick="addRow({}, true)"><i class ="fas fa-plus"></i></button>`;
+        const template = `
+        <div class="row" style="margin-bottom: 10px;">
+            <div class="col-md-5">
+                <input type ="text" name="name[]" value="${row.name}" class ="form-control form-control-user"
+                aria-describedby="Producto" placeholder="Producto" required>
+                </div>
+                <div class ="col-md-2">
+                <input type ="number" name="amount[]" value="${row.amount}" class ="form-control form-control-user"
+                aria-describedby="Cant" placeholder="Cant" required>
+                </div>
+                <div class ="col-md-3">
+                <input type ="number" name="price[]" value="${row.price}" class ="form-control form-control-user"
+                aria-describedby="Precio unitario" placeholder="Precio unitario" required>
+                </div>
+                <div class ="col-md-2 actions-buttons" style="padding-top: 4px;">
+                <button class ="btn btn-danger btn-circle btn-sm" title="Eliminar" type="button" onclick="deleteRow(this)">
+                <i class ="fas fa-minus"></i>
+                </button>
+                ${printAddButton ? addBtn : ""}
+            </div>
+        </div> `;
+        $("#invoiceRows").append(template);
+        setTimeout(() => {
+            handleRowEvents();
+        }, 200);
+    }
+
+    function handleRowEvents() {
+        const addButtonAmount = $(".add-row-btn").length;
+        if (addButtonAmount < 1) {
+            addEmptyRow();
+        } else {
+            $(".add-row-btn").each((i, el) => {
+                if (el) {
+                    if (addButtonAmount - 1 != i) {
+                        $(el).hide();
+                    } else {
+                        $(el).show();
+                    }
+                }
+            });
+        }
+    }
+
+    function addEmptyRow() {
+        addRow({}, true);
+    }
+
+    function deleteRow(el) {
+        $(el).parents(".row")[0].remove();
+        handleRowEvents();
+    }
+
+    function handleRowData(row) {
+        row = row || {};
+        row.name = row.name || '';
+        return row;
+    }
+</script>
+{{/section}}

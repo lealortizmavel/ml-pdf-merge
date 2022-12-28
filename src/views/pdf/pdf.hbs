@@ -1,0 +1,131 @@
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        Documentos
+        <button class="btn btn-secondary btn-circle btn-sm" title="Agregar" type="button" data-toggle="modal"
+            data-target="#pdfModal">
+            <i class="fas fa-plus"></i>
+        </button>
+    </h1>
+</div>
+
+<div class="row">
+    {{#each pdfs}}
+    <div class="col-xl-2 col-md-6 mb-4">
+        <div class="card shadow border-bottom-default h-100 py-0 pdf-card">
+            <div class="card-body">
+                <img src="/img/file.svg" width="80%" class="mb-2 pdf-img" data-filename="/documents/{{id}}/{{filename}}"
+                    style="cursor: pointer;">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-1">
+                        <div class="text-xs text-center font-weight-bold text-primary text-uppercase mb-1">
+                            {{ name }}
+                        </div>
+                        <div class="text-xs mb-0 text-center font-weight-bold text-grey-300">{{ formatedDate }} </div>
+                        <div class="text-xs mb-0 text-center font-weight-bold">
+                            <a href="/delete/{{id}}"
+                                onclick="return confirm('Estás a punto de eliminar el documento {{name}} ¿Deseas continuar?')"
+                                class="
+                                text-danger"> Eliminar </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{/each}}
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="pdfModal" tabindex="-1" role="dialog" aria-labelledby="pdfModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <form action="/save-document" id="frmFiles" enctype="multipart/form-data" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLongTitle">Crear documento</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <input type="hidden" name="id">
+                        <input type="text" name="name" class="form-control form-control-user" aria-describedby="Nombre"
+                            placeholder="Nombre" required>
+                    </div>
+                    <div class="form-group">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="repeatHalf" id="repeatHalf1"
+                                value="false" checked>
+                            <label class="form-check-label" for="repeatHalf1">
+                                Estándar
+                            </label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="repeatHalf" id="repeatHalf2"
+                                value="true">
+                            <label class="form-check-label" for="repeatHalf2">
+                                Espejo
+                            </label>
+                        </div>
+                    </div>
+
+                    <div></div>
+                    {{!-- <div class="custom-file">
+                        <input type="file" name="files" class="custom-file-input" accept="application/pdf,application"
+                            multiple="multiple" required>
+                        <label class="custom-file-label" for="validatedCustomFile">Elegir archivos...</label>
+                    </div> --}}
+                    <input type="file" id="pdfs" name="pdfs" accept="application/pdf,application" multiple="multiple"
+                        required id="archivos">
+                    <br>
+                    <span> <small>(Min 2 - Max 20)</small></span>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{#section 'script'}}
+<script type="application/javascript">
+    $(function () {
+        $(".pdf-card")
+            .mouseenter(function () {
+                $(this).addClass('border-bottom-primary');
+            })
+            .mouseleave(function () {
+                $(this).removeClass('border-bottom-primary');
+            });
+        $('.pdf-img').click(function () {
+            const filename = $(this).data('filename');
+            window.open(filename, '_blank');
+        })
+        $("#pdfs").change(function () {
+            validateFiles();
+        });
+        $("#frmFiles").submit(function (e) {
+            if (!validateFiles()) {
+                e.preventDefault();
+            }
+        });
+    });
+
+    function validateFiles() {
+        let valid = true;
+        const $fileUpload = $("#pdfs");
+        if (parseInt($fileUpload.get(0).files.length) > 20) {
+            valid = false;
+            alert("Límite de archivos excedido");
+        }
+        if (parseInt($fileUpload.get(0).files.length) < 2) {
+            valid = false;
+            alert("Al menos 2 archivos son requeridos");
+        }
+        return valid;
+    }
+</script>
+{{/section}}
